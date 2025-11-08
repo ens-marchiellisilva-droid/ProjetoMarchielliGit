@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: app-image:latest  # nome da imagem que iremos criar
+          image: marchi07/marchi07monitor:latest  
           imagePullPolicy: Never   # diz ao k8s usar a imagem local
           ports:
             - containerPort: 3000
