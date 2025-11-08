@@ -56,11 +56,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - - name: Build & Push
+      - name: Build & Push
   uses: docker/build-push-action@v6
   with:
-    context: ./app
-    file: ./app/Dockerfile
+    context: ./nginx
+    file: ./nginx/Dockerfile
     push: true
     tags: |
       ${{ steps.vars.outputs.IMAGE }}:latest
