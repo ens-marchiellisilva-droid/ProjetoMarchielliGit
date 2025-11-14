@@ -29,94 +29,78 @@ jobs:
           Write-Host "Home:       $env:USERPROFILE"
           Write-Host "Runner OS:  $env:RUNNER_OS"
 
-      # ---------------------------------------------------
-      # VARIÁVEIS — exatamente como no SEU CD original
-      # ---------------------------------------------------
+      # ================================
+      # VARIÁVEIS - iguais ao seu CD
+      # ================================
       - name: Set vars
         id: vars
         run: |
-          # usava IMAGE=seuusuario/monitor
           "IMAGE=marchi07/monitor" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
-          # usava TAG_SHA=$(echo ${GITHUB_SHA} | cut -c1-7)
           $sha = "${{ github.event.workflow_run.head_sha }}"
           "TAG_SHA=$($sha.Substring(0,7))" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
-          # usava NAMESPACE=${{ secrets.K8S_NAMESPACE || 'default' }}
           $ns = "${{ secrets.K8S_NAMESPACE }}"
           if ([string]::IsNullOrWhiteSpace($ns)) { $ns = "default" }
           "NAMESPACE=$ns" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
-      # ---------------------------------------------------
-      # Kubectl já funciona via Minikube - apenas validamos
-      # ---------------------------------------------------
+      # ================================
+      # kubectl OK
+      # ================================
       - name: Validate kubectl connection
         run: |
-          Write-Host "Validando kubectl..."
           kubectl get nodes
-          Write-Host "kubectl OK."
 
-      # ---------------------------------------------------
-      # Garantir namespace
-      # ---------------------------------------------------
+      # ================================
+      # Namespace
+      # ================================
       - name: Create namespace if not exists
         run: |
           $ns = "${{ steps.vars.outputs.NAMESPACE }}"
           kubectl get ns $ns 2>$null
           if ($LASTEXITCODE -ne 0) {
-            Write-Host "Criando namespace '$ns'..."
             kubectl create ns $ns
-          } else {
-            Write-Host "Namespace '$ns' já existe."
           }
 
-      # ---------------------------------------------------
-      # Aplica todos os manifests base
-      # ---------------------------------------------------
+      # ================================
+      # Apply base manifests
+      # ================================
       - name: Apply base manifests
         run: |
           $ns = "${{ steps.vars.outputs.NAMESPACE }}"
-          Write-Host "Aplicando manifests base..."
-          kubectl apply -n $ns -f k8s/app-deployment.yaml
           kubectl apply -n $ns -f k8s/prometheus-deployment.yaml
           kubectl apply -n $ns -f k8s/grafana-deployment.yaml
           kubectl apply -n $ns -f k8s/nginx-deployment.yaml
           kubectl apply -n $ns -f k8s/nginx-service.yaml
           kubectl apply -n $ns -f k8s/prometheus-config.yaml
-          Write-Host "Manifests base aplicados."
 
-      # ---------------------------------------------------
-      # Deployment do app principal
-      # ---------------------------------------------------
+      # ================================
+      # Deployment do app
+      # ================================
       - name: Apply app deployment
         run: |
-          Write-Host "Aplicando deployment do app..."
           kubectl apply -n "${{ steps.vars.outputs.NAMESPACE }}" -f k8s/deployment.yaml
 
-      # ---------------------------------------------------
-      # Atualização da imagem — exatamente IGUAL ao seu CD
-      # ---------------------------------------------------
+      # ================================
+      # Atualiza imagem do app
+      # ================================
       - name: Set image to new tag
         run: |
           $image = "${{ steps.vars.outputs.IMAGE }}:${{ steps.vars.outputs.TAG_SHA }}"
-          Write-Host "Atualizando imagem para $image..."
-          kubectl set image deployment/monitor monitor=$image -n "${{ steps.vars.outputs.NAMESPACE }}"
+          Write-Host "Atualizando imagem: $image"
+          kubectl set image deployment/deployment app=$image -n "${{ steps.vars.outputs.NAMESPACE }}"
 
-      # ---------------------------------------------------
-      # Rollout
-      # ---------------------------------------------------
+      # ================================
+      # Rollout - CORRIGIDO
+      # ================================
       - name: Wait rollout
         run: |
-          Write-Host "Aguardando rollout..."
-          kubectl rollout status deployment/monitor -n "${{ steps.vars.outputs.NAMESPACE }}" --timeout=120s
-          Write-Host "Rollout concluído."
+          kubectl rollout status deployment/deployment -n "${{ steps.vars.outputs.NAMESPACE }}" --timeout=120s
 
-      # ---------------------------------------------------
+      # ================================
       # Debug
-      # ---------------------------------------------------
+      # ================================
       - name: Show services and pods
         run: |
-          Write-Host "`nSERVIÇOS:"
           kubectl get svc -n "${{ steps.vars.outputs.NAMESPACE }}"
-          Write-Host "`nPODS:"
           kubectl get pods -o wide -n "${{ steps.vars.outputs.NAMESPACE }}"

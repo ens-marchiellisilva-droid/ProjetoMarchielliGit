@@ -14,8 +14,8 @@ spec:
     spec:
       containers:
         - name: app
-          image: marchi07/marchi07monitor:latest  
-          imagePullPolicy: Never   # diz ao k8s usar a imagem local
+          image: marchi07/monitor:latest  
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
 ---
@@ -30,4 +30,3 @@ spec:
     - protocol: TCP
       port: 3000
       targetPort: 3000
-
